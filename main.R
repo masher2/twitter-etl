@@ -1,5 +1,28 @@
 # Main ETL file
+library(DBI)
 library(rtweet)
+
+
+#' Set up the database
+#'
+#' Given a name contruct the database to hold the tweets data.
+setup_database <- function(db_name = "tweets.db") {
+  conn <- DBI::dbConnect(RSQLite::SQLite(), db_name)
+  DBI::dbExecute(
+    conn,
+    "CREATE TABLE tweet_data(
+      tweet_id INTEGER PRIMARY KEY,
+      date_created INTEGER,
+      user TEXT,
+      content TEXT,
+      source TEXT,
+      location TEXT,
+      quoted_user TEXT,
+      quoted_content TEXT
+    )"
+  )
+  DBI::dbDisconnect(conn)
+}
 
 
 #' Get tweets for a set of keys
