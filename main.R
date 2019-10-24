@@ -47,18 +47,20 @@ load_tweets <- function(tweets) {
 
 
 # Main loop ----
-token <- create_token(
-  app = 'app',
-  consumer_key = Sys.getenv('TW_CONSUMER_KEY'),
-  consumer_secret = Sys.getenv('TW_CONSUMER_SECRET'),
-  access_token = Sys.getenv('TW_ACCESS_TOKEN'),
-  acces_secret = Sys.getenv('TW_ACCESS_SECRET')
-)
-keys <- c('#chile', '#chiledesperto', '#santiago')
+main <- function() {
+  token <- create_token(
+    app = 'app',
+    consumer_key = Sys.getenv('TW_CONSUMER_KEY'),
+    consumer_secret = Sys.getenv('TW_CONSUMER_SECRET'),
+    access_token = Sys.getenv('TW_ACCESS_TOKEN'),
+    access_secret = Sys.getenv('TW_ACCESS_SECRET')
+  )
+  keys <- c('#chile', '#chiledesperto', '#santiago')
 
-counter <- 0
+  counter <- 0
 
-while(counter <= 6) {
-  tweet_file <- get_tweets(keys)
-  counter <- counter + 1
+  while(counter <= 6) {
+    tweet_file <- get_tweets(keys)
+    counter <- counter + 1
+  }
 }
