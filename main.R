@@ -29,10 +29,10 @@ setup_database <- function(db_name = "tweets.db") {
 #'
 #' Stream the important tweets into a json file and then return the name of the
 #' file to use it in the next steps of the ETL
-get_tweets <- function(keys) {
+get_tweets <- function(keys, timeout=600) {
   query <- paste(keys, collapse=",")
-  filename <- paste0("stream", format(Sys.Time(), "%Y%m%d_%H%M%S%"), ".json")
-  stream_tweets(q = query, timeout = 600, file_name = filename)
+  filename <- paste0("stream_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".json")
+  rtweet::stream_tweets(q = query, timeout = timeout, file_name = filename)
 
   filename
 }
