@@ -37,8 +37,36 @@ get_tweets <- function(keys, timeout=600) {
   filename
 }
 
+
 #' Process the tweets into a dataframe
 transform_tweets <- function(filename) {
+  df <- rtweet::parse_stream(filename)
+  df <- dplyr::filter(df, !is_retweet, lang == "es")
+  df <- dplyr::transmute(
+    df,
+    date_created = created_at,
+    user = screen_name,
+    content = text,
+    source = source,
+    location = location,
+    quoted_user = quoted_screen_name,
+    quoted_content = quoted_text
+  )
+  df <- dplyr::mutate_at(
+    df,
+    vars(content, quoted_content),
+    function(text) {
+      text = text %>% 
+        stringr::str_to_lower() %>%
+        stringr::str_remove_all("\\s?(f|ht)(tp)(s?)(://)([^\\.]*)[\\.|/](\\S*)") %>%
+        stringr::str_remove_all("@\\w+") %>%
+        tm::removeWords(tm::stopwords("spanish")) %>%
+        stringr::str_squish()
+    }
+  )
+  df <- dplyr::filter(df, !duplicated(content))
+
+  df
 }
 
 #' Load the tweets into a SQLite database
