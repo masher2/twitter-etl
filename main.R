@@ -74,8 +74,12 @@ transform_tweets <- function(filename) {
   df
 }
 
+
 #' Load the tweets into a SQLite database
-load_tweets <- function(tweets) {
+load_tweets <- function(tweets, database = "tweets.db") {
+  conn <- DBI::dbConnect(RSQLite::SQLite(), database)
+  DBI::dbWriteTable(conn, "tweet_data", tweets, append = TRUE)
+  DBI::dbDisconnect(conn)
 }
 
 
