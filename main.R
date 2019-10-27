@@ -32,7 +32,12 @@ setup_database <- function(db_name = "tweets.db") {
 get_tweets <- function(keys, timeout=600) {
   query <- paste(keys, collapse=",")
   filename <- paste0("stream_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".json")
-  rtweet::stream_tweets(q = query, timeout = timeout, file_name = filename)
+  rtweet::stream_tweets(
+    q = query,
+    timeout = timeout,
+    parse = FALSE,
+    file_name = filename
+  )
 
   filename
 }
