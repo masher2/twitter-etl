@@ -1,6 +1,12 @@
 # Main ETL file
-library(DBI)
-library(rtweet)
+suppressMessages({
+  library(DBI)
+  library(RSQLite)
+  library(rtweet)
+  library(dplyr)
+  library(stringr)
+  library(tm)
+})
 
 
 #' Set up the database
