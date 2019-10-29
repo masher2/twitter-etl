@@ -121,7 +121,16 @@ option_list <- list(
     c("--initial-setup"),
     action = "store_true",
     default = FALSE,
-    help = "Create a new sqlite database to store the tweets in."
+    help = 
+"Create a new sqlite database to store the tweets in.
+When this flag is used only the database is created, the streaming is not done
+unless the flag `--force-stream` is used also."
+  ),
+  make_option(
+    c("-f", "--force-stream"),
+    action = "store_true",
+    default = FALSE,
+    help = "When used with `--initial-setup` stream the tweets."
   ),
   make_option(
     c("--raw-data-dir"),
@@ -150,20 +159,23 @@ if (opt$initial_setup) {
   setup_database(opt$database)
 }
 
-token <- rtweet::create_token(
-  app = 'app',
-  consumer_key = Sys.getenv('TW_CONSUMER_KEY'),
-  consumer_secret = Sys.getenv('TW_CONSUMER_SECRET'),
-  access_token = Sys.getenv('TW_ACCESS_TOKEN'),
-  access_secret = Sys.getenv('TW_ACCESS_SECRET')
-)
-
-for (i in 1:opt$stream_chunks) {
-  tweet_file <- get_tweets(
-    opt$keys,
-    timeout = opt$stream_timeout,
-    raw_data_dir = opt$raw_data_dir
+if (opt$initial_setup == opt$force_stream) {
+  token <- rtweet::create_token(
+    app = 'app',
+    consumer_key = Sys.getenv('TW_CONSUMER_KEY'),
+    consumer_secret = Sys.getenv('TW_CONSUMER_SECRET'),
+    access_token = Sys.getenv('TW_ACCESS_TOKEN'),
+    access_secret = Sys.getenv('TW_ACCESS_SECRET')
   )
-  tweets <- transform_tweets(tweet_file)
-  load_tweets(tweets, database = opt$database)
+
+  for (i in 1:opt$stream_chunks) {
+    tweet_file <- get_tweets(
+      opt$keys,
+      timeout = opt$stream_timeout,
+      raw_data_dir = opt$raw_data_dir
+    )
+    tweets <- transform_tweets(tweet_file)
+    load_tweets(tweets, database = opt$database)
+  }
+
 }
