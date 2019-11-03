@@ -1,6 +1,7 @@
 #! /usr/bin/Rscript
 suppressMessages({
   library(optparse)
+  library(futile.logger)
   library(DBI)
   library(RSQLite)
   library(rtweet)
@@ -9,15 +10,19 @@ suppressMessages({
   library(tm)
 })
 
-
 # Functions -------------------------------------------------------------------
 #' Set up the database
 #'
 #' Given a name contruct the database to hold the tweets data.
 setup_database <- function(database = "tweets.db") {
+  flog.info("Setting up database '%s'", database)
+
   if (file.exists(database)) {
+    flog.info("file '%s' already exist, chosing new name for database file", database)
     database <- paste(format(Sys.time(), "%Y%m%d_%H%M%S"), database, sep = "_")
+    flog.info("database file name: %s", database)
   }
+
   conn <- DBI::dbConnect(RSQLite::SQLite(), database)
   DBI::dbExecute(
     conn,
@@ -33,6 +38,7 @@ setup_database <- function(database = "tweets.db") {
     )"
   )
   DBI::dbDisconnect(conn)
+  flog.info("database '%s' created", database)
 }
 
 
@@ -41,19 +47,25 @@ setup_database <- function(database = "tweets.db") {
 #' Stream the important tweets into a json file and then return the name of the
 #' file to use it in the next steps of the ETL
 get_tweets <- function(keys, timeout = 600, raw_data_dir = "raw_data") {
-  if (!dir.exists(raw_data_dir)) dir.create(raw_data_dir) 
+  if (!dir.exists(raw_data_dir)) {
+    flog.info("Creating folder '%s' to store the raw data streams", raw_data_dir)
+    dir.create(raw_data_dir) 
+  }
 
   filename <- file.path(
     raw_data_dir,
     paste0("stream_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".json")
   )
-  rtweet::stream_tweets(
+  flog.debug("Streaming tweets into %s for %s seconds", filename, timeout)
+  # rtweet::stream_tweets(
+  a(
     q = keys,
     timeout = timeout,
     parse = FALSE,
     file_name = filename,
-    verbose = FALSE
+    verbose = TRUE
   )
+  flog.debug("Stream completed")
 
   filename
 }
@@ -61,8 +73,12 @@ get_tweets <- function(keys, timeout = 600, raw_data_dir = "raw_data") {
 
 #' Process the tweets into a dataframe
 transform_tweets <- function(filename) {
-  if (file.size(filename) == 0) return(NULL)
+  if (file.size(filename) == 0) {
+    flog.warn("File %s is empty", filename)
+    return(NULL)
+  }
 
+  flog.info("Formatting tweets")
   df <- rtweet::parse_stream(filename, verbose=FALSE)
   df <- dplyr::filter(df, !is_retweet, lang == "es")
   df <- dplyr::transmute(
@@ -88,6 +104,7 @@ transform_tweets <- function(filename) {
     }
   )
   df <- dplyr::filter(df, !duplicated(content))
+  flog.info("Tweets formatted")
 
   df
 }
@@ -97,9 +114,11 @@ transform_tweets <- function(filename) {
 load_tweets <- function(tweets, database = "tweets.db") {
   if (is.null(tweets)) return()
 
+  flog.info("Loading tweets to database")
   conn <- DBI::dbConnect(RSQLite::SQLite(), database)
   DBI::dbWriteTable(conn, "tweet_data", tweets, append = TRUE)
   DBI::dbDisconnect(conn)
+  flog.info("Tweets loaded")
 }
 
 
@@ -155,11 +174,24 @@ option_parser <- OptionParser(option_list = option_list)
 opt <- parse_args(option_parser, convert_hyphens_to_underscores = TRUE)
 
 # Program ---------------------------------------------------------------------
+flog.info(
+  "Starting twitter stream with arguments:
+\tdatabase name: %s
+\traw data dir: %s
+\tsearch query: %s
+\tstream tweets: %s
+\tstream timeout: %s
+\tstream chunks: %s",
+  opt$database, opt$raw_data_dir, opt$keys,
+  opt$initial_setup == opt$force_stream, 
+  opt$stream_timeout, opt$stream_chunks
+)
 if (opt$initial_setup) {
   setup_database(opt$database)
 }
 
 if (opt$initial_setup == opt$force_stream) {
+  flog.info("Creating the twitter authorization token")
   token <- rtweet::create_token(
     app = 'app',
     consumer_key = Sys.getenv('TW_CONSUMER_KEY'),
@@ -169,6 +201,7 @@ if (opt$initial_setup == opt$force_stream) {
   )
 
   for (i in 1:opt$stream_chunks) {
+    flog.info("Starting stream chunk number %s", i)
     tweet_file <- get_tweets(
       opt$keys,
       timeout = opt$stream_timeout,
@@ -176,6 +209,9 @@ if (opt$initial_setup == opt$force_stream) {
     )
     tweets <- transform_tweets(tweet_file)
     load_tweets(tweets, database = opt$database)
+    flog.info("Chunk %s completed", i)
   }
 
+  flog.info("Stream completed")
 }
+
