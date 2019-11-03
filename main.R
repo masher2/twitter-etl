@@ -57,8 +57,7 @@ get_tweets <- function(keys, timeout = 600, raw_data_dir = "raw_data") {
     paste0("stream_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".json")
   )
   flog.debug("Streaming tweets into %s for %s seconds", filename, timeout)
-  # rtweet::stream_tweets(
-  a(
+  rtweet::stream_tweets(
     q = keys,
     timeout = timeout,
     parse = FALSE,
